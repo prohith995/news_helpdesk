@@ -211,9 +211,40 @@ class Report:
                     "## Analysis",
                     "",
                 ])
-                # This will be customized per workflow
-                lines.append("_(See structured output for details)_")
-                lines.append("")
+
+                # Framing Divergence specific output
+                if self.result.workflow_type == WorkflowType.FRAMING_DIVERGENCE:
+                    data = self.result.data
+
+                    # Divergence summary
+                    if "divergence_summary" in data:
+                        lines.append(f"**Summary:** {data['divergence_summary']}")
+                        lines.append("")
+
+                    # Clusters/Perspectives
+                    if "clusters" in data and data["clusters"]:
+                        lines.append("### Perspectives Identified")
+                        lines.append("")
+                        for cluster in data["clusters"]:
+                            sources = ", ".join(cluster.get("sources", []))
+                            lines.append(f"**{cluster.get('label', 'Unknown')}** ({sources})")
+                            themes = cluster.get("common_themes", [])
+                            if themes:
+                                lines.append(f"- Themes: {', '.join(themes)}")
+                            lines.append("")
+
+                    # Source framings
+                    if "framings" in data and data["framings"]:
+                        lines.append("### Source-by-Source Framing")
+                        lines.append("")
+                        lines.append("| Source | Stance | Key Frame |")
+                        lines.append("|--------|--------|-----------|")
+                        for f in data["framings"]:
+                            lines.append(f"| {f.get('source', '')} | {f.get('stance', '')} | {f.get('key_frame', '')} |")
+                        lines.append("")
+                else:
+                    lines.append("_(See structured output for details)_")
+                    lines.append("")
 
             # Citations
             if self.result.citations:
