@@ -14,7 +14,7 @@ from pathlib import Path
 from .config import get_config
 from .schemas import Query, Report, WorkflowResult, WorkflowType, AbstentionReason, Confidence
 from .router import classify_query
-from .workflows import run_framing_divergence
+from .workflows import run_framing_divergence, run_claim_check
 
 
 def create_parser() -> argparse.ArgumentParser:
@@ -127,16 +127,9 @@ def run_pipeline(query: Query, workflow_override: str | None = None, debug: bool
         return run_framing_divergence(query, debug)
 
     elif workflow_type == WorkflowType.CLAIM_CHECK:
-        # TODO Phase 5: Implement claim check workflow
-        return WorkflowResult(
-            workflow_type=workflow_type,
-            query=query,
-            success=False,
-            abstained=True,
-            abstention_reason=AbstentionReason.NO_RELEVANT_ARTICLES,
-            abstention_details=f"Claim Check workflow not yet implemented.",
-            execution_time_seconds=time.time() - start_time,
-        )
+        if debug:
+            print("[DEBUG] Running Claim Check workflow...")
+        return run_claim_check(query, debug)
 
     else:
         return WorkflowResult(

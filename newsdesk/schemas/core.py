@@ -242,6 +242,53 @@ class Report:
                         for f in data["framings"]:
                             lines.append(f"| {f.get('source', '')} | {f.get('stance', '')} | {f.get('key_frame', '')} |")
                         lines.append("")
+                # Claim Check specific output
+                elif self.result.workflow_type == WorkflowType.CLAIM_CHECK:
+                    data = self.result.data
+
+                    # Claim and verdict
+                    claim = data.get("claim", "Unknown claim")
+                    verdict = data.get("verdict", "unknown").upper()
+                    verdict_emoji = {
+                        "SUPPORTED": "✅",
+                        "CONTRADICTED": "❌",
+                        "MIXED": "⚖️",
+                        "UNVERIFIABLE": "❓",
+                    }.get(verdict, "❓")
+
+                    lines.append(f"**Claim:** {claim}")
+                    lines.append("")
+                    lines.append(f"### Verdict: {verdict_emoji} {verdict}")
+                    lines.append("")
+
+                    if "summary" in data:
+                        lines.append(data["summary"])
+                        lines.append("")
+
+                    # Evidence breakdown
+                    num_for = data.get("sources_supporting", 0)
+                    num_against = data.get("sources_contradicting", 0)
+                    num_neutral = data.get("sources_neutral", 0)
+
+                    lines.append(f"**Evidence breakdown:** {num_for} supporting, {num_against} contradicting, {num_neutral} neutral")
+                    lines.append("")
+
+                    # Supporting evidence
+                    if data.get("evidence_for"):
+                        lines.append("### Supporting Evidence")
+                        lines.append("")
+                        for e in data["evidence_for"]:
+                            lines.append(f"- **{e.get('source', 'Unknown')}**: \"{e.get('quote', '')}\"")
+                        lines.append("")
+
+                    # Contradicting evidence
+                    if data.get("evidence_against"):
+                        lines.append("### Contradicting Evidence")
+                        lines.append("")
+                        for e in data["evidence_against"]:
+                            lines.append(f"- **{e.get('source', 'Unknown')}**: \"{e.get('quote', '')}\"")
+                        lines.append("")
+
                 else:
                     lines.append("_(See structured output for details)_")
                     lines.append("")
