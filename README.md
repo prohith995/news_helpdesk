@@ -69,9 +69,26 @@ ANTHROPIC_API_KEY=your-key-here
 # Optional: NewsAPI key for real news articles
 # Without this, mock data is used (fine for testing)
 NEWSAPI_KEY=your-newsapi-key
+GNEWS_KEY=your-gnews-key
+CURRENTS_KEY=your-currents-key
 ```
 
 ## Usage
+
+### Web Interface (Recommended)
+
+```bash
+source venv/bin/activate
+python run_web.py
+# Open http://localhost:8000
+```
+
+The web interface provides:
+- Clean, minimal UI
+- Real-time status updates as analysis progresses
+- Formatted markdown reports
+
+### Command Line
 
 ```bash
 # Activate virtual environment

@@ -1,0 +1,611 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>News Intelligence Desk</title>
+    <style>
+        :root {
+            --bg: #0a0a0a;
+            --surface: #141414;
+            --border: #2a2a2a;
+            --text: #e5e5e5;
+            --text-muted: #888;
+            --accent: #3b82f6;
+            --accent-hover: #2563eb;
+            --success: #22c55e;
+            --warning: #eab308;
+            --error: #ef4444;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            min-height: 100vh;
+            line-height: 1.6;
+        }
+
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+            padding: 2rem;
+        }
+
+        header {
+            text-align: center;
+            margin-bottom: 3rem;
+        }
+
+        h1 {
+            font-size: 1.75rem;
+            font-weight: 600;
+            margin-bottom: 0.5rem;
+        }
+
+        .subtitle {
+            color: var(--text-muted);
+            font-size: 0.9rem;
+        }
+
+        .input-section {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 1.5rem;
+            margin-bottom: 2rem;
+        }
+
+        .input-group {
+            display: flex;
+            gap: 1rem;
+        }
+
+        input[type="text"] {
+            flex: 1;
+            background: var(--bg);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 0.875rem 1rem;
+            color: var(--text);
+            font-size: 1rem;
+            outline: none;
+            transition: border-color 0.2s;
+        }
+
+        input[type="text"]:focus {
+            border-color: var(--accent);
+        }
+
+        input[type="text"]::placeholder {
+            color: var(--text-muted);
+        }
+
+        button {
+            background: var(--accent);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            padding: 0.875rem 1.5rem;
+            font-size: 1rem;
+            font-weight: 500;
+            cursor: pointer;
+            transition: background 0.2s;
+            white-space: nowrap;
+        }
+
+        button:hover:not(:disabled) {
+            background: var(--accent-hover);
+        }
+
+        button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .examples {
+            margin-top: 1rem;
+            font-size: 0.85rem;
+            color: var(--text-muted);
+        }
+
+        .examples span {
+            cursor: pointer;
+            text-decoration: underline;
+            text-decoration-style: dotted;
+            text-underline-offset: 2px;
+        }
+
+        .examples span:hover {
+            color: var(--text);
+        }
+
+        /* Status Section */
+        .status-section {
+            display: none;
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 1.5rem;
+            margin-bottom: 2rem;
+        }
+
+        .status-section.visible {
+            display: block;
+        }
+
+        .status-header {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            margin-bottom: 1rem;
+        }
+
+        .status-icon {
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            background: var(--accent);
+            animation: pulse 1.5s infinite;
+        }
+
+        .status-icon.completed {
+            background: var(--success);
+            animation: none;
+        }
+
+        .status-icon.failed, .status-icon.abstained {
+            background: var(--warning);
+            animation: none;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+
+        .status-text {
+            font-weight: 500;
+        }
+
+        .progress-bar {
+            height: 4px;
+            background: var(--border);
+            border-radius: 2px;
+            overflow: hidden;
+            margin-bottom: 1rem;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: var(--accent);
+            border-radius: 2px;
+            transition: width 0.3s ease;
+        }
+
+        .status-steps {
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+        }
+
+        .step {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            font-size: 0.9rem;
+            color: var(--text-muted);
+        }
+
+        .step.active {
+            color: var(--text);
+        }
+
+        .step.done {
+            color: var(--success);
+        }
+
+        .step-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: var(--border);
+        }
+
+        .step.active .step-dot {
+            background: var(--accent);
+        }
+
+        .step.done .step-dot {
+            background: var(--success);
+        }
+
+        /* Report Section */
+        .report-section {
+            display: none;
+        }
+
+        .report-section.visible {
+            display: block;
+        }
+
+        .report-card {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            overflow: hidden;
+        }
+
+        .report-header {
+            padding: 1rem 1.5rem;
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .workflow-badge {
+            background: var(--accent);
+            color: white;
+            padding: 0.25rem 0.75rem;
+            border-radius: 100px;
+            font-size: 0.8rem;
+            font-weight: 500;
+        }
+
+        .report-meta {
+            font-size: 0.85rem;
+            color: var(--text-muted);
+        }
+
+        .report-content {
+            padding: 1.5rem;
+        }
+
+        .report-content h1,
+        .report-content h2,
+        .report-content h3 {
+            margin-top: 1.5rem;
+            margin-bottom: 0.75rem;
+        }
+
+        .report-content h1:first-child,
+        .report-content h2:first-child {
+            margin-top: 0;
+        }
+
+        .report-content h1 { font-size: 1.5rem; }
+        .report-content h2 { font-size: 1.25rem; color: var(--text); }
+        .report-content h3 { font-size: 1.1rem; color: var(--text-muted); }
+
+        .report-content p {
+            margin-bottom: 1rem;
+        }
+
+        .report-content ul, .report-content ol {
+            margin-bottom: 1rem;
+            padding-left: 1.5rem;
+        }
+
+        .report-content li {
+            margin-bottom: 0.5rem;
+        }
+
+        .report-content table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 1rem 0;
+            font-size: 0.9rem;
+        }
+
+        .report-content th,
+        .report-content td {
+            padding: 0.75rem;
+            text-align: left;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .report-content th {
+            color: var(--text-muted);
+            font-weight: 500;
+        }
+
+        .report-content a {
+            color: var(--accent);
+            text-decoration: none;
+        }
+
+        .report-content a:hover {
+            text-decoration: underline;
+        }
+
+        .report-content blockquote {
+            border-left: 3px solid var(--border);
+            padding-left: 1rem;
+            margin: 1rem 0;
+            color: var(--text-muted);
+        }
+
+        .report-content hr {
+            border: none;
+            border-top: 1px solid var(--border);
+            margin: 1.5rem 0;
+        }
+
+        .report-content strong {
+            color: var(--text);
+        }
+
+        /* Abstention styling */
+        .abstention-card {
+            background: linear-gradient(135deg, #1a1a0a 0%, #141414 100%);
+            border-color: var(--warning);
+        }
+
+        .abstention-content {
+            text-align: center;
+            padding: 2rem;
+        }
+
+        .abstention-icon {
+            font-size: 3rem;
+            margin-bottom: 1rem;
+        }
+
+        .abstention-title {
+            font-size: 1.25rem;
+            font-weight: 600;
+            margin-bottom: 0.5rem;
+        }
+
+        .abstention-reason {
+            color: var(--text-muted);
+            margin-bottom: 1rem;
+        }
+
+        .abstention-details {
+            background: var(--bg);
+            padding: 1rem;
+            border-radius: 8px;
+            font-size: 0.9rem;
+            text-align: left;
+        }
+
+        /* Footer */
+        footer {
+            text-align: center;
+            padding: 2rem;
+            color: var(--text-muted);
+            font-size: 0.85rem;
+        }
+
+        footer a {
+            color: var(--text-muted);
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>News Intelligence Desk</h1>
+            <p class="subtitle">Deterministic news analysis with citations and confidence scores</p>
+        </header>
+
+        <section class="input-section">
+            <div class="input-group">
+                <input type="text" id="query" placeholder="Enter your query..." autofocus>
+                <button id="analyze-btn" onclick="analyze()">Analyze</button>
+            </div>
+            <div class="examples">
+                Try:
+                <span onclick="setQuery('How is the AI regulation debate being framed by different outlets?')">AI regulation framing</span> ·
+                <span onclick="setQuery('Is it true that tech companies are laying off thousands of employees?')">Tech layoffs claim</span>
+            </div>
+        </section>
+
+        <section class="status-section" id="status-section">
+            <div class="status-header">
+                <div class="status-icon" id="status-icon"></div>
+                <span class="status-text" id="status-text">Starting analysis...</span>
+            </div>
+            <div class="progress-bar">
+                <div class="progress-fill" id="progress-fill" style="width: 0%"></div>
+            </div>
+            <div class="status-steps" id="status-steps">
+                <div class="step" data-step="parsing"><div class="step-dot"></div>Parsing query</div>
+                <div class="step" data-step="classifying"><div class="step-dot"></div>Classifying query type</div>
+                <div class="step" data-step="fetching"><div class="step-dot"></div>Fetching articles</div>
+                <div class="step" data-step="verifying"><div class="step-dot"></div>Verifying source diversity</div>
+                <div class="step" data-step="analyzing"><div class="step-dot"></div>Analyzing content</div>
+                <div class="step" data-step="completed"><div class="step-dot"></div>Generating report</div>
+            </div>
+        </section>
+
+        <section class="report-section" id="report-section"></section>
+
+        <footer>
+            News Intelligence Desk · <a href="https://github.com" target="_blank">View on GitHub</a>
+        </footer>
+    </div>
+
+    <script>
+        const queryInput = document.getElementById('query');
+        const analyzeBtn = document.getElementById('analyze-btn');
+        const statusSection = document.getElementById('status-section');
+        const reportSection = document.getElementById('report-section');
+
+        function setQuery(q) {
+            queryInput.value = q;
+            queryInput.focus();
+        }
+
+        queryInput.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') analyze();
+        });
+
+        async function analyze() {
+            const query = queryInput.value.trim();
+            if (!query) return;
+
+            // Reset UI
+            analyzeBtn.disabled = true;
+            statusSection.classList.add('visible');
+            reportSection.classList.remove('visible');
+            reportSection.innerHTML = '';
+            resetSteps();
+
+            try {
+                // Start analysis
+                const response = await fetch('/api/analyze', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ query })
+                });
+
+                const { job_id } = await response.json();
+
+                // Stream status updates
+                const eventSource = new EventSource(`/api/stream/${job_id}`);
+
+                eventSource.addEventListener('status', (e) => {
+                    const status = JSON.parse(e.data);
+                    updateStatus(status);
+
+                    if (['completed', 'failed', 'abstained'].includes(status.status)) {
+                        eventSource.close();
+                        analyzeBtn.disabled = false;
+
+                        if (status.result) {
+                            showReport(status);
+                        }
+                    }
+                });
+
+                eventSource.onerror = () => {
+                    eventSource.close();
+                    analyzeBtn.disabled = false;
+                };
+
+            } catch (error) {
+                console.error(error);
+                analyzeBtn.disabled = false;
+            }
+        }
+
+        function resetSteps() {
+            document.querySelectorAll('.step').forEach(s => {
+                s.classList.remove('active', 'done');
+            });
+            document.getElementById('status-icon').className = 'status-icon';
+            document.getElementById('progress-fill').style.width = '0%';
+        }
+
+        function updateStatus(status) {
+            const icon = document.getElementById('status-icon');
+            const text = document.getElementById('status-text');
+            const progress = document.getElementById('progress-fill');
+
+            text.textContent = status.message;
+            progress.style.width = status.progress + '%';
+
+            // Update icon
+            icon.className = 'status-icon';
+            if (status.status === 'completed') icon.classList.add('completed');
+            if (status.status === 'failed' || status.status === 'abstained') icon.classList.add('abstained');
+
+            // Update steps
+            const stepOrder = ['parsing', 'classifying', 'classified', 'fetching', 'fetched', 'verifying', 'analyzing', 'completed'];
+            const currentIndex = stepOrder.indexOf(status.step);
+
+            document.querySelectorAll('.step').forEach(stepEl => {
+                const stepName = stepEl.dataset.step;
+                const stepIndex = stepOrder.indexOf(stepName);
+
+                stepEl.classList.remove('active', 'done');
+
+                if (stepIndex < currentIndex) {
+                    stepEl.classList.add('done');
+                } else if (stepIndex === currentIndex ||
+                          (stepName === 'fetching' && ['fetching', 'fetched'].includes(status.step)) ||
+                          (stepName === 'classifying' && ['classifying', 'classified'].includes(status.step))) {
+                    stepEl.classList.add('active');
+                }
+            });
+        }
+
+        function showReport(status) {
+            const result = status.result;
+
+            if (result.abstained) {
+                reportSection.innerHTML = `
+                    <div class="report-card abstention-card">
+                        <div class="abstention-content">
+                            <div class="abstention-icon">⚠️</div>
+                            <div class="abstention-title">Analysis Abstained</div>
+                            <div class="abstention-reason">${result.reason?.replace(/_/g, ' ')}</div>
+                            <div class="abstention-details">${result.details || 'The system could not provide a reliable analysis for this query.'}</div>
+                        </div>
+                    </div>
+                `;
+            } else {
+                const workflow = result.workflow?.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+                reportSection.innerHTML = `
+                    <div class="report-card">
+                        <div class="report-header">
+                            <span class="workflow-badge">${workflow}</span>
+                            <span class="report-meta">${result.execution_time}s · ${result.json?.metadata?.articles_analyzed || 0} articles</span>
+                        </div>
+                        <div class="report-content">
+                            ${markdownToHtml(result.markdown)}
+                        </div>
+                    </div>
+                `;
+            }
+
+            reportSection.classList.add('visible');
+        }
+
+        function markdownToHtml(md) {
+            if (!md) return '';
+
+            return md
+                // Headers
+                .replace(/^### (.*$)/gm, '<h3>$1</h3>')
+                .replace(/^## (.*$)/gm, '<h2>$1</h2>')
+                .replace(/^# (.*$)/gm, '<h1>$1</h1>')
+                // Bold
+                .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+                // Links
+                .replace(/\[(.*?)\]\((.*?)\)/g, '<a href="$2" target="_blank">$1</a>')
+                // Tables
+                .replace(/\|(.+)\|/g, (match) => {
+                    const cells = match.split('|').filter(c => c.trim());
+                    if (cells.every(c => /^[-:]+$/.test(c.trim()))) return '';
+                    const tag = match.includes('---') ? 'th' : 'td';
+                    return '<tr>' + cells.map(c => `<${tag}>${c.trim()}</${tag}>`).join('') + '</tr>';
+                })
+                .replace(/(<tr>.*<\/tr>\n?)+/g, '<table>$&</table>')
+                // Lists
+                .replace(/^\- (.*$)/gm, '<li>$1</li>')
+                .replace(/(<li>.*<\/li>\n?)+/g, '<ul>$&</ul>')
+                .replace(/^\d+\. (.*$)/gm, '<li>$1</li>')
+                // Horizontal rule
+                .replace(/^---$/gm, '<hr>')
+                // Paragraphs
+                .replace(/\n\n/g, '</p><p>')
+                .replace(/^(?!<[h|u|o|t|l|p|hr])/gm, '<p>')
+                .replace(/$(?!<\/[h|u|o|t|l|p])/gm, '</p>')
+                // Clean up
+                .replace(/<p><\/p>/g, '')
+                .replace(/<p>(<[h|u|o|t|hr])/g, '$1')
+                .replace(/(<\/[h|u|o|t]>)<\/p>/g, '$1');
+        }
+    </script>
+</body>
+</html>
