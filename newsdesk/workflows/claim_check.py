@@ -100,10 +100,17 @@ Respond with ONLY a JSON object:
 }}
 
 Guidelines:
-- "supports" = article confirms the claim is true
-- "contradicts" = article suggests the claim is false or different
-- "neutral" = article discusses the topic but doesn't confirm or deny
-- "irrelevant" = article is not about this claim
+- "supports" = article provides information consistent with the claim being true. This includes:
+  * Direct confirmation of the claim
+  * Examples, instances, or specifics that align with the claim
+  * Related facts that make the claim plausible
+- "contradicts" = article suggests the claim is false, exaggerated, or significantly different
+- "neutral" = article mentions the topic but provides no relevant information either way
+- "irrelevant" = article is not about this topic at all
+
+IMPORTANT: Be inclusive when classifying as "supports". If an article discusses events/facts
+that are consistent with the claim (even if not directly confirming it), classify as "supports".
+Only use "neutral" when the article truly provides no useful information about the claim.
 """
 
 
@@ -331,7 +338,60 @@ class ClaimCheckWorkflow:
 
         # Check if we have enough evidence
         total_relevant = len(evidence_for) + len(evidence_against)
+
+        # If no supporting/contradicting evidence but we have neutral mentions,
+        # we can still provide a partial assessment
         if total_relevant == 0:
+            if len(neutral_evidence) >= 2:
+                # We have topically relevant articles but no direct evidence
+                # Provide an "insufficient evidence" result rather than full abstention
+                result_data = {
+                    "claim": claim,
+                    "verdict": "insufficient_evidence",
+                    "summary": f"Found {len(neutral_evidence)} articles discussing this topic, "
+                              f"but none provided direct evidence to confirm or deny the claim.",
+                    "evidence_for": [],
+                    "evidence_against": [],
+                    "neutral_mentions": [
+                        {
+                            "source": e.article.source.name,
+                            "text": e.relevant_text,
+                        }
+                        for e in neutral_evidence[:5]
+                    ],
+                    "sources_supporting": 0,
+                    "sources_contradicting": 0,
+                    "sources_neutral": len(neutral_evidence),
+                }
+
+                citations = [
+                    Citation(
+                        article=e.article,
+                        relevant_quote=e.relevant_text,
+                        relevance_score=e.confidence * 0.5,  # Lower score for neutral
+                    )
+                    for e in neutral_evidence[:5]
+                ]
+
+                confidence = Confidence(
+                    score=0.3,
+                    reasoning="Topic is being discussed in news but no direct verification found.",
+                    limiting_factors=["No direct supporting or contradicting evidence found",
+                                     "Assessment based on topic relevance only"],
+                )
+
+                return WorkflowResult(
+                    workflow_type=WorkflowType.CLAIM_CHECK,
+                    query=query,
+                    success=True,  # Partial success - we found relevant info
+                    data=result_data,
+                    citations=citations,
+                    confidence=confidence,
+                    articles_analyzed=len(retrieval.articles),
+                    sources_count=retrieval.sources_count,
+                    execution_time_seconds=time.time() - start_time,
+                )
+
             return WorkflowResult(
                 workflow_type=WorkflowType.CLAIM_CHECK,
                 query=query,
