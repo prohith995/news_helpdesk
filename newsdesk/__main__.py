@@ -13,6 +13,7 @@ from pathlib import Path
 
 from .config import get_config
 from .schemas import Query, Report, WorkflowResult, WorkflowType, AbstentionReason, Confidence
+from .router import classify_query
 
 
 def create_parser() -> argparse.ArgumentParser:
@@ -72,7 +73,7 @@ Output:
     return parser
 
 
-def run_pipeline(query: Query, workflow_override: str | None = None) -> WorkflowResult:
+def run_pipeline(query: Query, workflow_override: str | None = None, debug: bool = False) -> WorkflowResult:
     """Execute the full analysis pipeline.
 
     This is the main orchestration function. LLM is used for:
@@ -84,22 +85,50 @@ def run_pipeline(query: Query, workflow_override: str | None = None) -> Workflow
     """
     start_time = time.time()
 
-    # TODO Phase 2: Implement router
-    # For now, return a placeholder result
-    workflow_type = WorkflowType.UNKNOWN
+    # Step 1: Classify query (or use override)
     if workflow_override == "framing":
         workflow_type = WorkflowType.FRAMING_DIVERGENCE
+        classification_reasoning = "Workflow manually set to framing"
     elif workflow_override == "claim":
         workflow_type = WorkflowType.CLAIM_CHECK
+        classification_reasoning = "Workflow manually set to claim"
+    else:
+        # Use LLM-based classification
+        if debug:
+            print("[DEBUG] Classifying query...")
 
-    # Placeholder: abstain because not implemented yet
+        classification = classify_query(query)
+
+        if debug:
+            print(f"[DEBUG] Classification: {classification.workflow_type.value}")
+            print(f"[DEBUG] Confidence: {classification.confidence:.2f}")
+            print(f"[DEBUG] Reasoning: {classification.reasoning}")
+
+        if not classification.success:
+            # Classification failed or query is ambiguous - abstain
+            return WorkflowResult(
+                workflow_type=classification.workflow_type,
+                query=query,
+                success=False,
+                abstained=True,
+                abstention_reason=classification.abstention_reason,
+                abstention_details=classification.abstention_details,
+                execution_time_seconds=time.time() - start_time,
+            )
+
+        workflow_type = classification.workflow_type
+        classification_reasoning = classification.reasoning
+
+    # Step 2: Execute the appropriate workflow
+    # TODO Phase 4/5: Implement actual workflows
+    # For now, return a placeholder result
     result = WorkflowResult(
         workflow_type=workflow_type,
         query=query,
         success=False,
         abstained=True,
-        abstention_reason=AbstentionReason.QUERY_AMBIGUOUS,
-        abstention_details="Pipeline not yet implemented. Phase 1 skeleton only.",
+        abstention_reason=AbstentionReason.NO_RELEVANT_ARTICLES,
+        abstention_details=f"Workflow '{workflow_type.value}' not yet implemented. Classification: {classification_reasoning}",
         execution_time_seconds=time.time() - start_time,
     )
 
@@ -139,7 +168,7 @@ def main():
     print("-" * 50)
 
     workflow_override = None if args.workflow == "auto" else args.workflow
-    result = run_pipeline(query, workflow_override)
+    result = run_pipeline(query, workflow_override, debug=config.debug)
 
     # Generate report
     report = Report(result=result)

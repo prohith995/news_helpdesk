@@ -5,6 +5,22 @@ from dataclasses import dataclass, field
 from pathlib import Path
 
 
+def _load_env_file():
+    """Load .env file if it exists."""
+    env_path = Path(__file__).parent.parent / ".env"
+    if env_path.exists():
+        with open(env_path) as f:
+            for line in f:
+                line = line.strip()
+                if line and not line.startswith("#") and "=" in line:
+                    key, value = line.split("=", 1)
+                    os.environ.setdefault(key.strip(), value.strip())
+
+
+# Load .env on module import
+_load_env_file()
+
+
 @dataclass
 class LLMConfig:
     """LLM provider configuration."""
@@ -13,9 +29,14 @@ class LLMConfig:
     max_retries: int = 1
     timeout_seconds: int = 30
 
+    # Mock mode for testing without API
+    mock_mode: bool = field(default_factory=lambda: os.getenv("NEWSDESK_MOCK", "").lower() == "true")
+
     # API key from environment
     @property
     def api_key(self) -> str:
+        if self.mock_mode:
+            return "mock-api-key"
         if self.provider == "anthropic":
             key = os.getenv("ANTHROPIC_API_KEY", "")
         else:
