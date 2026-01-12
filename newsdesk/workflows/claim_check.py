@@ -18,8 +18,7 @@ from typing import Optional
 
 from ..config import get_config
 from ..llm import LLMClient
-from ..retrieval import search_news, RetrievalResult
-from ..retrieval.mock import get_mock_articles_claim
+from ..retrieval import search_news_multi, RetrievalResult
 from ..schemas import (
     Query,
     Article,
@@ -136,10 +135,9 @@ Guidelines:
 class ClaimCheckWorkflow:
     """Workflow for verifying factual claims."""
 
-    def __init__(self, llm_client: LLMClient | None = None, use_mock: bool = False):
+    def __init__(self, llm_client: LLMClient | None = None):
         self.llm = llm_client or LLMClient()
         self.config = get_config()
-        self.use_mock = use_mock or not self.config.news.newsapi_key
 
     def extract_claim(self, query: Query) -> tuple[str, list[str]] | None:
         """Extract the specific claim to verify from user query.
@@ -160,20 +158,10 @@ class ClaimCheckWorkflow:
         return data.get("claim", ""), data.get("search_terms", [])
 
     def fetch_articles(self, search_terms: list[str]) -> RetrievalResult:
-        """Fetch articles relevant to the claim."""
-        if self.use_mock:
-            articles = get_mock_articles_claim(" ".join(search_terms))
-            unique_sources = set(a.source.name for a in articles)
-            return RetrievalResult(
-                articles=articles,
-                sources_count=len(unique_sources),
-                total_results=len(articles),
-                success=True,
-            )
-
+        """Fetch articles relevant to the claim using all available APIs."""
         # Search using the first few terms
         query = " ".join(search_terms[:3])
-        return search_news(query)
+        return search_news_multi(query)
 
     def extract_evidence(self, article: Article, claim: str) -> Evidence | None:
         """Extract evidence from an article regarding the claim."""
@@ -402,8 +390,8 @@ class ClaimCheckWorkflow:
             limiting_factors.append(f"Limited to {total_relevant} relevant sources")
         if verdict == Verdict.MIXED:
             limiting_factors.append("Evidence is conflicting")
-        if self.use_mock:
-            limiting_factors.append("Using mock data (no NewsAPI key)")
+        if not self.config.news.has_any_api_key:
+            limiting_factors.append("Using mock data (no news API keys configured)")
             confidence_score *= 0.5
 
         confidence = Confidence(

@@ -49,18 +49,40 @@ class LLMConfig:
 @dataclass
 class NewsConfig:
     """News retrieval configuration."""
-    # NewsAPI.org - free tier allows 100 requests/day
-    newsapi_key: str = field(default_factory=lambda: os.getenv("NEWSAPI_KEY", ""))
+    # API Keys - all three free tiers combined = 800 requests/day
+    newsapi_key: str = field(default_factory=lambda: os.getenv("NEWSAPI_KEY", ""))      # 100/day
+    gnews_key: str = field(default_factory=lambda: os.getenv("GNEWS_KEY", ""))          # 100/day
+    currents_key: str = field(default_factory=lambda: os.getenv("CURRENTS_KEY", ""))    # 600/day
 
     # Minimum sources required for analysis
     min_sources: int = 3
 
-    # Maximum articles to fetch per query
+    # Maximum articles to fetch per query (per API)
+    max_articles_per_api: int = 10
+
+    # Maximum total articles after combining APIs
     max_articles: int = 20
 
     # Cache settings
     cache_dir: Path = field(default_factory=lambda: Path("./cache"))
     cache_ttl_hours: int = 1
+
+    @property
+    def has_any_api_key(self) -> bool:
+        """Check if at least one news API is configured."""
+        return bool(self.newsapi_key or self.gnews_key or self.currents_key)
+
+    @property
+    def available_apis(self) -> list[str]:
+        """List of configured APIs."""
+        apis = []
+        if self.newsapi_key:
+            apis.append("newsapi")
+        if self.gnews_key:
+            apis.append("gnews")
+        if self.currents_key:
+            apis.append("currents")
+        return apis
 
 
 @dataclass

@@ -17,8 +17,7 @@ from typing import Optional
 
 from ..config import get_config
 from ..llm import LLMClient, LLMResponse
-from ..retrieval import search_news, RetrievalResult
-from ..retrieval.mock import get_mock_articles_framing
+from ..retrieval import search_news_multi, RetrievalResult
 from ..schemas import (
     Query,
     Article,
@@ -98,10 +97,9 @@ Respond with ONLY a JSON object:
 class FramingDivergenceWorkflow:
     """Workflow for analyzing framing divergence across sources."""
 
-    def __init__(self, llm_client: LLMClient | None = None, use_mock: bool = False):
+    def __init__(self, llm_client: LLMClient | None = None):
         self.llm = llm_client or LLMClient()
         self.config = get_config()
-        self.use_mock = use_mock or not self.config.news.newsapi_key
 
     def extract_topic(self, query: Query) -> tuple[str, list[str]] | None:
         """Extract the searchable topic from a user query.
@@ -122,18 +120,8 @@ class FramingDivergenceWorkflow:
         return data.get("topic", ""), data.get("keywords", [])
 
     def fetch_articles(self, topic: str) -> RetrievalResult:
-        """Fetch articles for the topic."""
-        if self.use_mock:
-            articles = get_mock_articles_framing(topic)
-            unique_sources = set(a.source.name for a in articles)
-            return RetrievalResult(
-                articles=articles,
-                sources_count=len(unique_sources),
-                total_results=len(articles),
-                success=True,
-            )
-
-        return search_news(topic)
+        """Fetch articles for the topic using all available APIs."""
+        return search_news_multi(topic)
 
     def extract_framing(self, article: Article, topic: str) -> SourceFraming | None:
         """Extract framing from a single article using LLM."""
@@ -326,8 +314,8 @@ class FramingDivergenceWorkflow:
         limiting_factors = []
         if len(framings) < 5:
             limiting_factors.append(f"Limited to {len(framings)} sources")
-        if self.use_mock:
-            limiting_factors.append("Using mock data (no NewsAPI key)")
+        if not self.config.news.has_any_api_key:
+            limiting_factors.append("Using mock data (no news API keys configured)")
             confidence_score *= 0.5  # Reduce confidence for mock data
 
         confidence = Confidence(
