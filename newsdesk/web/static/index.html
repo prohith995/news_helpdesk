@@ -522,6 +522,7 @@
             // Update steps
             const stepOrder = ['parsing', 'classifying', 'classified', 'fetching', 'fetched', 'verifying', 'analyzing', 'completed'];
             const currentIndex = stepOrder.indexOf(status.step);
+            const isFinished = ['completed', 'failed', 'abstained'].includes(status.status);
 
             document.querySelectorAll('.step').forEach(stepEl => {
                 const stepName = stepEl.dataset.step;
@@ -529,7 +530,10 @@
 
                 stepEl.classList.remove('active', 'done');
 
-                if (stepIndex < currentIndex) {
+                // If finished, mark all steps as done
+                if (isFinished) {
+                    stepEl.classList.add('done');
+                } else if (stepIndex < currentIndex) {
                     stepEl.classList.add('done');
                 } else if (stepIndex === currentIndex ||
                           (stepName === 'fetching' && ['fetching', 'fetched'].includes(status.step)) ||
