@@ -388,6 +388,143 @@
         footer a {
             color: var(--text-muted);
         }
+
+        /* History Panel */
+        .history-section {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            margin-bottom: 2rem;
+        }
+
+        .history-header {
+            padding: 1rem 1.5rem;
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .history-header h2 {
+            font-size: 1rem;
+            font-weight: 500;
+        }
+
+        .history-toggle {
+            background: none;
+            border: none;
+            color: var(--text-muted);
+            cursor: pointer;
+            padding: 0.25rem 0.5rem;
+            font-size: 0.85rem;
+        }
+
+        .history-toggle:hover {
+            color: var(--text);
+        }
+
+        .history-list {
+            max-height: 0;
+            overflow: hidden;
+            transition: max-height 0.3s ease;
+        }
+
+        .history-list.expanded {
+            max-height: 400px;
+            overflow-y: auto;
+        }
+
+        .history-item {
+            padding: 1rem 1.5rem;
+            border-bottom: 1px solid var(--border);
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+
+        .history-item:last-child {
+            border-bottom: none;
+        }
+
+        .history-item:hover {
+            background: var(--bg);
+        }
+
+        .history-item-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            gap: 1rem;
+            margin-bottom: 0.5rem;
+        }
+
+        .history-query {
+            font-size: 0.9rem;
+            color: var(--text);
+            flex: 1;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .history-meta {
+            font-size: 0.75rem;
+            color: var(--text-muted);
+            white-space: nowrap;
+        }
+
+        .history-summary {
+            font-size: 0.8rem;
+            color: var(--text-muted);
+        }
+
+        .history-workflow {
+            display: inline-block;
+            background: var(--border);
+            padding: 0.125rem 0.5rem;
+            border-radius: 100px;
+            font-size: 0.7rem;
+            margin-right: 0.5rem;
+        }
+
+        .history-empty {
+            padding: 2rem;
+            text-align: center;
+            color: var(--text-muted);
+            font-size: 0.9rem;
+        }
+
+        .history-item-actions {
+            display: flex;
+            gap: 0.5rem;
+            margin-top: 0.5rem;
+        }
+
+        .history-item-actions button {
+            background: none;
+            border: 1px solid var(--border);
+            color: var(--text-muted);
+            padding: 0.25rem 0.5rem;
+            font-size: 0.75rem;
+            border-radius: 4px;
+        }
+
+        .history-item-actions button:hover {
+            border-color: var(--text-muted);
+            color: var(--text);
+        }
+
+        .clear-history-btn {
+            background: none;
+            border: none;
+            color: var(--error);
+            font-size: 0.8rem;
+            cursor: pointer;
+            padding: 0.25rem;
+        }
+
+        .clear-history-btn:hover {
+            text-decoration: underline;
+        }
     </style>
 </head>
 <body>
@@ -428,6 +565,17 @@
         </section>
 
         <section class="report-section" id="report-section"></section>
+
+        <section class="history-section" id="history-section">
+            <div class="history-header">
+                <h2>Recent Analyses</h2>
+                <div>
+                    <button class="clear-history-btn" onclick="clearHistory()" title="Clear all history">Clear</button>
+                    <button class="history-toggle" onclick="toggleHistory()">▼</button>
+                </div>
+            </div>
+            <div class="history-list" id="history-list"></div>
+        </section>
 
         <footer>
             News Intelligence Desk · <a href="https://github.com" target="_blank">View on GitHub</a>
@@ -610,6 +758,137 @@
                 .replace(/<p>(<[h|u|o|t|hr])/g, '$1')
                 .replace(/(<\/[h|u|o|t]>)<\/p>/g, '$1');
         }
+
+        // History functions
+        const historyList = document.getElementById('history-list');
+        let historyExpanded = false;
+
+        async function loadHistory() {
+            try {
+                const response = await fetch('/api/history?limit=10');
+                const data = await response.json();
+                renderHistory(data.entries);
+            } catch (error) {
+                console.error('Failed to load history:', error);
+            }
+        }
+
+        function renderHistory(entries) {
+            if (entries.length === 0) {
+                historyList.innerHTML = '<div class="history-empty">No analyses yet</div>';
+                return;
+            }
+
+            historyList.innerHTML = entries.map(entry => {
+                const date = new Date(entry.created_at);
+                const timeAgo = formatTimeAgo(date);
+                const workflow = entry.workflow?.replace(/_/g, ' ') || 'Unknown';
+
+                return `
+                    <div class="history-item" onclick="loadHistoryEntry('${entry.id}')">
+                        <div class="history-item-header">
+                            <div class="history-query">${escapeHtml(entry.query)}</div>
+                            <div class="history-meta">${timeAgo}</div>
+                        </div>
+                        <div class="history-summary">
+                            <span class="history-workflow">${workflow}</span>
+                            ${escapeHtml(entry.summary || '')}
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        function formatTimeAgo(date) {
+            const seconds = Math.floor((new Date() - date) / 1000);
+            if (seconds < 60) return 'Just now';
+            const minutes = Math.floor(seconds / 60);
+            if (minutes < 60) return `${minutes}m ago`;
+            const hours = Math.floor(minutes / 60);
+            if (hours < 24) return `${hours}h ago`;
+            const days = Math.floor(hours / 24);
+            if (days < 7) return `${days}d ago`;
+            return date.toLocaleDateString();
+        }
+
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        function toggleHistory() {
+            historyExpanded = !historyExpanded;
+            historyList.classList.toggle('expanded', historyExpanded);
+            document.querySelector('.history-toggle').textContent = historyExpanded ? '▲' : '▼';
+        }
+
+        async function loadHistoryEntry(entryId) {
+            try {
+                const response = await fetch(`/api/history/${entryId}`);
+                if (!response.ok) throw new Error('Entry not found');
+
+                const entry = await response.json();
+
+                // Show the result
+                statusSection.classList.remove('visible');
+                reportSection.classList.add('visible');
+
+                if (entry.result?.abstained) {
+                    reportSection.innerHTML = `
+                        <div class="report-card abstention-card">
+                            <div class="abstention-content">
+                                <div class="abstention-icon">⚠️</div>
+                                <div class="abstention-title">Analysis Abstained</div>
+                                <div class="abstention-reason">${entry.result.reason?.replace(/_/g, ' ') || ''}</div>
+                                <div class="abstention-details">${entry.result.details || 'The system could not provide a reliable analysis.'}</div>
+                            </div>
+                        </div>
+                    `;
+                } else {
+                    const workflow = entry.workflow?.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+                    const result = entry.result || {};
+                    reportSection.innerHTML = `
+                        <div class="report-card">
+                            <div class="report-header">
+                                <span class="workflow-badge">${workflow}</span>
+                                <span class="report-meta">${entry.execution_time}s · Loaded from history</span>
+                            </div>
+                            <div class="report-content">
+                                ${markdownToHtml(result.markdown || '')}
+                            </div>
+                        </div>
+                    `;
+                }
+
+                // Set the query in the input
+                queryInput.value = entry.query;
+
+            } catch (error) {
+                console.error('Failed to load history entry:', error);
+            }
+        }
+
+        async function clearHistory() {
+            if (!confirm('Clear all analysis history?')) return;
+
+            try {
+                await fetch('/api/history', { method: 'DELETE' });
+                loadHistory();
+            } catch (error) {
+                console.error('Failed to clear history:', error);
+            }
+        }
+
+        // Load history on page load
+        loadHistory();
+
+        // Refresh history after analysis completes
+        const originalShowReport = showReport;
+        showReport = function(status) {
+            originalShowReport(status);
+            setTimeout(loadHistory, 500); // Refresh history list
+        };
     </script>
 </body>
 </html>

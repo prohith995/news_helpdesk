@@ -23,6 +23,7 @@ from ..retrieval import search_news_multi
 from ..verification import run_retrieval_gates
 from ..workflows.framing import FramingDivergenceWorkflow
 from ..workflows.claim_check import ClaimCheckWorkflow
+from ..storage import HistoryStore, HistoryEntry, get_history_store
 
 
 # Store for active analysis jobs
@@ -261,6 +262,9 @@ async def run_analysis(job_id: str, query_text: str):
         else:
             update_job(job_id, "completed", 100, f"Analysis complete in {execution_time:.1f}s", status="completed")
 
+        # Save to history
+        save_to_history(job_id, query_text, jobs[job_id]["result"])
+
     except Exception as e:
         update_job(job_id, "error", 0, str(e), status="failed")
 
@@ -273,3 +277,95 @@ async def get_api_config():
         "apis_configured": config.news.available_apis,
         "has_any_api": config.news.has_any_api_key,
     }
+
+
+# History endpoints
+@app.get("/api/history")
+async def list_history(limit: int = 20, offset: int = 0):
+    """List recent analysis history."""
+    store = get_history_store()
+    entries = store.list(limit=limit, offset=offset)
+    return {"entries": entries, "total": len(store.list(limit=100))}
+
+
+@app.get("/api/history/{entry_id}")
+async def get_history_entry(entry_id: str):
+    """Get a specific history entry."""
+    store = get_history_store()
+    entry = store.get(entry_id)
+    if not entry:
+        raise HTTPException(status_code=404, detail="History entry not found")
+    return {
+        "id": entry.id,
+        "query": entry.query,
+        "workflow": entry.workflow,
+        "status": entry.status,
+        "summary": entry.summary,
+        "created_at": entry.created_at,
+        "execution_time": entry.execution_time,
+        "result": entry.result,
+    }
+
+
+@app.delete("/api/history/{entry_id}")
+async def delete_history_entry(entry_id: str):
+    """Delete a history entry."""
+    store = get_history_store()
+    if store.delete(entry_id):
+        return {"deleted": True}
+    raise HTTPException(status_code=404, detail="History entry not found")
+
+
+@app.delete("/api/history")
+async def clear_history():
+    """Clear all history."""
+    store = get_history_store()
+    count = store.clear()
+    return {"deleted": count}
+
+
+def save_to_history(job_id: str, query: str, result: dict):
+    """Save a completed analysis to history."""
+    store = get_history_store()
+
+    # Extract summary based on workflow type
+    workflow = result.get("workflow", "unknown")
+    if result.get("abstained"):
+        summary = result.get("details", "Analysis abstained")
+    elif workflow == "framing_divergence":
+        json_data = result.get("json", {})
+        if isinstance(json_data, str):
+            import json as json_module
+            try:
+                json_data = json_module.loads(json_data)
+            except:
+                json_data = {}
+        data = json_data.get("data", {})
+        clusters = data.get("clusters", [])
+        summary = f"Found {len(clusters)} distinct framing perspectives"
+    elif workflow == "claim_check":
+        json_data = result.get("json", {})
+        if isinstance(json_data, str):
+            import json as json_module
+            try:
+                json_data = json_module.loads(json_data)
+            except:
+                json_data = {}
+        data = json_data.get("data", {})
+        verdict = data.get("verdict", "unknown")
+        summary = f"Verdict: {verdict.replace('_', ' ').title()}"
+    else:
+        summary = "Analysis complete"
+
+    entry = HistoryEntry(
+        id=job_id,
+        query=query,
+        workflow=workflow,
+        status=result.get("status", "completed") if result.get("abstained") else "completed",
+        summary=summary,
+        created_at=datetime.now().isoformat(),
+        execution_time=result.get("execution_time", 0),
+        result=result,
+    )
+
+    store.save(entry)
